@@ -12,15 +12,16 @@
 
 
 <script type="module">
-  import Notification from "./notification.js";
+  import NotificationMessage from './notification.js';
 
-  const message = new Notification('Тестовое сообщение', {
-    type: 'error'
+  btn1.addEventListener('click', () => {
+    const notification = new NotificationMessage('hello world', {
+      duration: 2000,
+      type: 'success'
+    });
+
+    notification.show();
   });
-
-  btn1.onclick = () => message.show(messageContainer);
-
-
 </script>
 </body>
 

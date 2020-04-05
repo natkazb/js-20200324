@@ -54,12 +54,12 @@ export default class NotificationMessage {
     this.removeEventListeners();
   }
 
-  show(parent = undefined) {
-    if (parent !== undefined) {
-      parent.append(this.element);
-    } else {
-      document.body.append(this.element);
-    }
+  show(parent = null) {
+    parent = parent ?? document.body;
+    parent.querySelectorAll('div.notification').forEach(function(item) {
+      item.remove();
+    });
+    parent.append(this.element);
     const event = new Event('start');
     this.element.dispatchEvent(event);
   }
