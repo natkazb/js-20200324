@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="UTF-8">
+<title>Notification</title>
+<link rel="stylesheet" type="text/css" href="style.css">
+
+<body>
+<div style="position: fixed; top: 0; right: 0;">
+  <button id="btn1">Show simple message!</button>
+</div>
+
+<div id="messageContainer"></div>
+
+
+<script type="module">
+  import Notification from "./notification.js";
+
+  const message = new Notification('Тестовое сообщение', {
+    type: 'error'
+  });
+
+  btn1.onclick = () => message.show(messageContainer);
+
+
+</script>
+</body>
+
+
