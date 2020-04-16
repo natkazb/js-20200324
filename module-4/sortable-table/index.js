@@ -1,13 +1,8 @@
 export default class SortableTable {
   element;
-  subElements = {};
+  subElements = {header: null, body: null};
   headersConfig = [];
   data = [];
-
-  static CONST_STRING = 'string';
-  static CONST_NUMBER = 'number';
-  static CONST_ASC = 'asc';
-  static CONST_DESC = 'desc';
 
   constructor(headersConfig, {
     data = []
@@ -18,13 +13,17 @@ export default class SortableTable {
     this.render();
   }
 
-  get template () {
+  get header () {
     let result = '<div class="sortable-table__header sortable-table__row">';
     for (let headOne of this.headersConfig) {
       result += `<div class="sortable-table__cell">${headOne.title}</div>`;
     }
     result += '</div>';
+    return result;
+  }
 
+  get body () {
+    let result = '';
     for (let dataOne of this.data) {
       result += '<div class="sortable-table__row">';
       for (let headOne of this.headersConfig) {
@@ -39,13 +38,35 @@ export default class SortableTable {
     return result;
   }
 
-  render() {
+  render () {
+    const body = this.body;
+    const header = this.header;
     const element = document.createElement('div');
     element.classList.add('sortable-table');
-
-    element.innerHTML = this.template;
+    element.innerHTML = header + body;
     this.element = element;
-    this.subElements = this.element.children;
+
+    const subElement = document.createElement('div');
+    subElement.innerHTML = body;
+    this.subElements.body = subElement;
+    subElement.innerHTML = header;
+    this.subElements.header = subElement;
+  }
+
+  sortStrings (a, b) {
+    return a.localeCompare(b);
+  }
+
+  sortNumbers (a, b) {
+    return a - b;
+  }
+
+  sortDirection (sortFunction, order, field, a, b) {
+    let direction = 1;
+    if (order === 'desc') {
+      direction = -1;
+    }
+    return direction * sortFunction(a[field], b[field]);
   }
 
   sort (field, order) {
@@ -55,39 +76,27 @@ export default class SortableTable {
         break;
       }
     }
-    let sortFunction;
     if (headOne.sortable || true) {
-      let direction = 1;
-      if (order === SortableTable.CONST_DESC) {
-        direction = -1;
+      let sortFunction = this.sortNumbers;
+
+      if (headOne.sortType === 'string') {
+        sortFunction = this.sortStrings;
       }
 
-      sortFunction = (a, b) => {return direction * (a[field] - b[field])};
-
-      if (headOne.sortType === SortableTable.CONST_STRING) {
-        sortFunction = (a, b) => {
-          //a[field].localeCompare(b[field], 'default', {caseFirst: 'upper'})
-          const bandA = a[field].toUpperCase();
-          const bandB = b[field].toUpperCase();
-
-          let comparison = 0;
-          if (bandA > bandB) {
-            comparison = 1;
-          } else if (bandA < bandB) {
-            comparison = -1;
-          }
-          return direction * comparison;
-        };
-      }
-
-      this.data = this.data.sort(sortFunction);
+      this.data = this.data.sort((a, b) => this.sortDirection(sortFunction, order, field, a, b));
       this.update();
     }
   }
 
   update () {
-    this.element.innerHTML = this.template;
-    this.subElements = this.element.children;
+    while (this.element.children.length > 1) {
+      this.element.removeChild(this.element.lastChild);
+    }
+    const body = this.body;
+    const subElement = document.createElement('div');
+    subElement.innerHTML = body;
+    this.element.append(subElement);
+    this.subElements.body = subElement;
   }
 
   remove() {
@@ -96,7 +105,6 @@ export default class SortableTable {
 
   destroy() {
     this.remove();
-    this.subElements = {};
+    this.subElements = {header: null, body: null};
   }
 }
-
