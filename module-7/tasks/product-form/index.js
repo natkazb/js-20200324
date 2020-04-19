@@ -1,4 +1,5 @@
 import escapeHtml from "../../utils/escape-html.js";
+import ImageUploader from '../../image-uploader/index.js';
 
 export default class ProductFormComponent {
   element;
@@ -19,10 +20,31 @@ export default class ProductFormComponent {
     this.dispatchEvent();
   };
 
+  async upload(fileInput) {
+    let uploader = new ImageUploader();
+
+    alert('Загружаем...');
+
+    let result;
+
+    try {
+      result = await uploader.upload(fileInput.files[0]);
+      alert('Изображение загружено');
+    } catch(err) {
+      alert('Ошибка загрузки изображения');
+      console.error(err);
+    } finally {
+      alert('Готово!')
+    }
+
+    console.log(result);
+  }
+
   uploadImage = () => {
     const inputFile = document.createElement('input');
     inputFile.type = 'file';
     inputFile.click();
+    inputFile.onchange = this.upload(inputFile);
   };
 
   constructor(formData = {}) {
@@ -34,7 +56,7 @@ export default class ProductFormComponent {
   printCategories() {
     let result = `<div class="form-group form-group__half_left">
 <label class="form-label">Категория</label>
-<select class="form-control" name="category">`;
+<select class="form-control" name="category" data-elem="subcategory">`;
     for (let category of this.formData.categories) {
       result += `<option value="${category.value}">${category.text}</option>`;
     }
@@ -73,7 +95,7 @@ export default class ProductFormComponent {
     const check = (value) => value === status ? 'selected' : '';
     return `<div class="form-group form-group__part-half">
         <label class="form-label">Статус</label>
-        <select class="form-control" name="status">
+        <select class="form-control" data-elem="status" name="status">
           <option value="1" ${check(1)}>Активен</option>
           <option value="0" ${check(0)}>Неактивен</option>
         </select>
@@ -86,27 +108,27 @@ export default class ProductFormComponent {
       <div class="form-group form-group__half_left">
         <fieldset>
           <label class="form-label">Название товара</label>
-          <input required="" type="text" name="title" value="${this.formData.title}" class="form-control" placeholder="Название товара">
+          <input required="" type="text" data-elem="title" name="title" value="${this.formData.title}" class="form-control" placeholder="Название товара">
         </fieldset>
       </div>
       <div class="form-group form-group__wide">
         <label class="form-label">Описание</label>
-        <textarea required="" class="form-control" name="description" data-elem="productDescription" placeholder="Описание товара">${this.formData.description}</textarea>
+        <textarea required="" class="form-control" name="description" data-elem="description" placeholder="Описание товара">${this.formData.description}</textarea>
       </div>`
       + this.printPhoto() + this.printCategories() +
       `<div class="form-group form-group__half_left form-group__two-col">
         <fieldset>
           <label class="form-label">Цена ($)</label>
-          <input required="" type="number" name="price" value="${this.formData.price}" class="form-control" placeholder="100">
+          <input required="" type="number" data-elem="price" name="price" value="${this.formData.price}" class="form-control" placeholder="100">
         </fieldset>
         <fieldset>
           <label class="form-label">Скидка ($)</label>
-          <input required="" type="number" name="discount" value="${this.formData.discount}" class="form-control" placeholder="0">
+          <input required="" type="number" data-elem="discount" name="discount" value="${this.formData.discount}" class="form-control" placeholder="0">
         </fieldset>
       </div>
       <div class="form-group form-group__part-half">
         <label class="form-label">Количество</label>
-        <input required="" type="number" class="form-control" value="${this.formData.quantity}" name="quantity" placeholder="1">
+        <input required="" type="number" data-elem="quantity" class="form-control" value="${this.formData.quantity}" name="quantity" placeholder="1">
       </div>`
       + this.printStatus() +
       `<div class="form-buttons">
@@ -141,6 +163,21 @@ export default class ProductFormComponent {
   }
 
   dispatchEvent() {
+    for (let key in this.formData) {
+      if (key === 'images') {
+        const urls = this.subElements.imageListContainer.querySelectorAll('input[name="url"]');
+        const sources = this.subElements.imageListContainer.querySelectorAll('input[name="source"]');
+        this.subElements[key] = [];
+        for (let i = 0; i < urls.length; i++) {
+          this.subElements[key].push({
+            url: urls[i],
+            name: sources[i]
+          });
+        }
+      } else if (this.subElements[key] !== undefined) {
+        this.formData[key] = this.subElements[key].value ?? '';
+      }
+    }
     const event = new CustomEvent('product-saved', {
       detail: this.formData
     });
