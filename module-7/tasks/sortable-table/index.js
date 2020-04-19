@@ -7,6 +7,7 @@ export default class SortableTable {
   subElements = {};
   data = [];
   pageSize = 30;
+  elementHeight = 0;
 
   onSortClick = async (event) => {
     const element = event.target.closest('.sortable-table__cell');
@@ -16,33 +17,34 @@ export default class SortableTable {
     if (sortable) {
       this.subElements.loading.style.display = 'grid';
       this.offset = 1;
-      const data = this.isSortLocally ? this.sortData(columnId, order) : await this.loadData(columnId, order);
+      let data = [];
+      if (this.isSortLocally) {
+        data = this.sortData(columnId, order);
+      } else {
+        this.offset = 1;
+        data = await this.loadData(columnId, order);
+      }
       element.dataset.order = order;
       this.sorted = {
         id: columnId,
         order: order
       };
 
-      this.renderRows(data);
+      this.renderRows(data, false);
       this.subElements.loading.style.display = 'none';
     }
   };
 
-  async onScroll () {
-    const contentHeight = this.element.offsetHeight;      // 1) высота блока контента вместе с границами
-    const yOffset       = window.pageYOffset;      // 2) текущее положение скролбара
-    const xOffset       = window.pageXOffset;      // 2) текущее положение скролбара
-    const window_height = window.innerHeight;      // 3) высота внутренней области окна документа
-    const y             = yOffset + window_height;
-    // если пользователь достиг конца
-    if(y >= contentHeight)
-    {
-      let {id} = this.sorted;
-      const order = this.changeDirection(id);
+  async onScroll (event) {
+    const elementHeight = this.element.offsetHeight;
+    const y = window.pageYOffset + window.innerHeight;
+    // если дошли до низа window и this.elementHeight (высота нашей таблицы) уже успела измениться на новую
+    if (this.elementHeight !== elementHeight && y >= elementHeight) {
+      this.elementHeight = elementHeight;
+      const {id, order} = this.sorted;
       const data = await this.loadData(id, order);
       this.data.push(data);
       this.renderRows(data);
-      window.scrollBy(xOffset, y + 100);
     }
   }
 
@@ -87,7 +89,7 @@ export default class SortableTable {
     return result;
   }
 
-  renderRows (data) {
+  renderRows (data, append = true) {
     this.subElements.emptyPlaceholder.style.display = 'none';
     let result = '';
     for (let dataOne of data) {
@@ -102,7 +104,12 @@ export default class SortableTable {
       result += '</div>';
     }
 
-    this.subElements.body.innerHTML = result;
+    if (append) {
+      this.subElements.body.insertAdjacentHTML('beforeend', result);
+    } else {
+      this.subElements.body.innerHTML = result;
+    }
+
     if ((data.length || 0) === 0) {
       this.subElements.emptyPlaceholder.style.display = 'flex';
     }
@@ -139,7 +146,7 @@ export default class SortableTable {
   }
 
   initEventListeners () {
-    this.subElements.header.addEventListener('pointerdown', this.onSortClick);
+    this.subElements.header.addEventListener('pointerdown', this.onSortClick.bind(this));
     window.addEventListener('scroll', this.onScroll.bind(this));
   }
 
