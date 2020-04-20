@@ -17,6 +17,7 @@ export default class SortableTable {
     if (sortable) {
       this.subElements.loading.style.display = 'grid';
       this.offset = 1;
+      this.elementHeight = 0;
       let data = [];
       if (this.isSortLocally) {
         data = this.sortData(columnId, order);
