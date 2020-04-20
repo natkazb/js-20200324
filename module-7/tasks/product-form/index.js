@@ -20,32 +20,44 @@ export default class ProductFormComponent {
     this.dispatchEvent();
   };
 
-  async upload(fileInput) {
+  async upload() {
     let uploader = new ImageUploader();
-
-    alert('Загружаем...');
+    const file = this.subElements.file.files[0];
+    const fileName = file.name ?? '';
 
     let result;
 
     try {
-      result = await uploader.upload(fileInput.files[0]);
-      alert('Изображение загружено');
+      result = await uploader.upload(file);
+      console.log('Изображение загружено');
     } catch(err) {
       alert('Ошибка загрузки изображения');
       console.error(err);
     } finally {
-      alert('Готово!')
+      console.log('Готово');
     }
 
-    console.log(result);
+    const success = result.success ?? false;
+    if (success) {
+      this.formData.images.push({
+        url: result.data.link,
+        name: fileName
+      });
+
+      this.renderImages();
+    }
   }
 
   uploadImage = () => {
-    const inputFile = document.createElement('input');
-    inputFile.type = 'file';
-    inputFile.click();
-    inputFile.onchange = this.upload(inputFile);
+    this.subElements.file.click();
+    this.subElements.file.onchange = this.upload.bind(this);
   };
+
+  deleteImage = (event) => {
+    const deleteButton = event.target;
+    this.formData.images.splice(deleteButton.dataset.deleteHandle, 1);
+    this.renderImages();
+  }
 
   constructor(formData = {}) {
     this.formData = {...this.defaultFormData, ...formData};
@@ -65,10 +77,10 @@ export default class ProductFormComponent {
   }
 
   printPhoto() {
-    let result = `<div class="form-group form-group__wide" data-elem="sortable-list-container">
-        <label class="form-label">Фото</label>
+    let result = `<label class="form-label">Фото</label>
         <div data-elem="imageListContainer">
           <ul class="sortable-list">`;
+    let index = 0;
     for (let image of this.formData.images) {
       result += `<li class="products-edit__imagelist-item sortable-list__item" style="">
               <input type="hidden" name="url" value="${image.url}">
@@ -79,14 +91,15 @@ export default class ProductFormComponent {
                 <span>${image.name}</span>
               </span>
               <button type="button">
-                <img src="icon-trash.svg" data-delete-handle="" alt="delete">
+                <img src="icon-trash.svg" data-delete-handle="${index}" alt="delete">
               </button>
             </li>`;
+      index++;
     }
     result += `</ul>
         </div>
-        <button type="button" name="uploadImage" data-elem="uploadImageButton" class="button-primary-outline"><span>Загрузить</span></button>
-      </div>`;
+        <input type="file" data-elem="file" style="display: none;">
+        <button type="button" name="uploadImage" data-elem="uploadImageButton" class="button-primary-outline"><span>Загрузить</span></button>`;
     return result;
   }
 
@@ -114,8 +127,11 @@ export default class ProductFormComponent {
       <div class="form-group form-group__wide">
         <label class="form-label">Описание</label>
         <textarea required="" class="form-control" name="description" data-elem="description" placeholder="Описание товара">${this.formData.description}</textarea>
-      </div>`
-      + this.printPhoto() + this.printCategories() +
+      </div>
+      <div class="form-group form-group__wide" data-elem="sortable-list-container">`
+      + this.printPhoto() +
+      `</div>`
+      + this.printCategories() +
       `<div class="form-group form-group__half_left form-group__two-col">
         <fieldset>
           <label class="form-label">Цена ($)</label>
@@ -150,6 +166,10 @@ export default class ProductFormComponent {
     this.subElements = this.getSubElements(element);
 
     this.initEventListeners();
+  }
+
+  renderImages() {
+    this.subElements['sortable-list-container'].innerHTML = this.printPhoto();
   }
 
   getSubElements(element) {
@@ -187,11 +207,19 @@ export default class ProductFormComponent {
   initEventListeners() {
     this.subElements.uploadImageButton.addEventListener('click', this.uploadImage);
     this.subElements.saveButton.addEventListener('click', this.onSubmit);
+    const buttons = this.element.querySelectorAll('[data-delete-handle]');
+    for (let button of buttons) {
+      button.addEventListener('click', this.deleteImage);
+    }
   }
 
   removeEventListeners() {
     this.subElements.uploadImageButton.removeEventListener('click', this.uploadImage);
     this.subElements.saveButton.removeEventListener('click', this.onSubmit);
+    const buttons = this.element.querySelectorAll('[data-delete-handle]');
+    for (let button of buttons) {
+      button.removeEventListener('click', this.deleteImage);
+    }
   }
 
   destroy() {
