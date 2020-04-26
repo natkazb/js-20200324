@@ -116,7 +116,7 @@ export default class ProductFormComponent {
   }
 
   get template() {
-    let result = `<div class="product-form">
+    return `<div class="product-form">
     <form data-elem="productForm" class="form-grid" onsubmit="return false;">
       <div class="form-group form-group__half_left">
         <fieldset>
@@ -128,11 +128,11 @@ export default class ProductFormComponent {
         <label class="form-label">Описание</label>
         <textarea required="" class="form-control" name="description" data-elem="description" placeholder="Описание товара">${this.formData.description}</textarea>
       </div>
-      <div class="form-group form-group__wide" data-elem="sortable-list-container">`
-      + this.printPhoto() +
-      `</div>`
-      + this.printCategories() +
-      `<div class="form-group form-group__half_left form-group__two-col">
+      <div class="form-group form-group__wide" data-elem="sortable-list-container">
+      ${this.printPhoto()}
+      </div>
+      ${this.printCategories()}
+      <div class="form-group form-group__half_left form-group__two-col">
         <fieldset>
           <label class="form-label">Цена ($)</label>
           <input required="" type="number" data-elem="price" name="price" value="${this.formData.price}" class="form-control" placeholder="100">
@@ -145,16 +145,15 @@ export default class ProductFormComponent {
       <div class="form-group form-group__part-half">
         <label class="form-label">Количество</label>
         <input required="" type="number" data-elem="quantity" class="form-control" value="${this.formData.quantity}" name="quantity" placeholder="1">
-      </div>`
-      + this.printStatus() +
-      `<div class="form-buttons">
+      </div>
+      ${this.printStatus()}
+      <div class="form-buttons">
         <button type="submit" name="save" data-elem="saveButton" class="button-primary-outline">
           Сохранить товар
         </button>
       </div>
     </form>
   </div>`;
-    return result;
   }
 
   render() {
@@ -182,7 +181,7 @@ export default class ProductFormComponent {
     }, {});
   }
 
-  dispatchEvent() {
+  setValues() {
     for (let key in this.formData) {
       if (key === 'images') {
         const urls = this.subElements.imageListContainer.querySelectorAll('input[name="url"]');
@@ -198,6 +197,10 @@ export default class ProductFormComponent {
         this.formData[key] = this.subElements[key].value ?? '';
       }
     }
+  }
+
+  dispatchEvent() {
+    this.setValues();
     const event = new CustomEvent('product-saved', {
       detail: this.formData
     });
