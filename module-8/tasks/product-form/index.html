@@ -17,30 +17,8 @@
 
 <script type="module">
   import ProductFormComponent from './index.js';
-  import categories from "./categories.js";
 
-  const productData = {
-    title: 'foo',
-    description: 'bar',
-    subcategory: '',
-    price: '1',
-    discount: '1',
-    quantity: '1',
-    status: '',
-    images: [
-      {
-        url: 'https://i.imgur.com/7SPzszI.jpg',
-        name: 'foo.jpg'
-      },
-      {
-        url: 'https://i.imgur.com/7SPzszI.jpg',
-        name: 'bar.jpg'
-      }
-    ],
-    categories
-  };
-
-  const productForm = new ProductFormComponent(productData);
+  const productForm = new ProductFormComponent('101-planset-lenovo-tab-e10-tb-x104l-32-gb-3g-lte-cernyj');
 
   root.append(productForm.element);
 

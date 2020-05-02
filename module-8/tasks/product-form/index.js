@@ -1,8 +1,10 @@
 import escapeHtml from "../../utils/escape-html.js";
 import ImageUploader from '../../image-uploader/index.js';
-import fetchJson from "../../utils/fetch-json";
+import fetchJson from "../../utils/fetch-json.js";
 
+const URL_BACKEND = 'https://course-js.javascript.ru/api/rest/';
 const BACKEND_URL = 'https://course-js.javascript.ru/api/rest/products';
+const BACKEND_CATEGORY_URL = 'https://course-js.javascript.ru/api/rest/categories?_sort=weight&_refs=subcategory';
 
 export default class ProductFormComponent {
   element;
@@ -27,7 +29,7 @@ export default class ProductFormComponent {
     console.log(data);
   };
 
-  async send () {
+  send () {
     return fetchJson(this.url, {
       method: 'PATCH',
       headers: {
@@ -76,37 +78,64 @@ export default class ProductFormComponent {
     this.renderImages();
   }
 
-  constructor(formData = {}) {
-    this.formData = {...this.defaultFormData, ...formData};
-    this.url = new URL(url, BACKEND_URL);
-
+  constructor(id) {
+    this.formData = this.defaultFormData;
     this.render();
+
+    Promise.all([this.loadProduct(id), this.loadCategories()]).then(data => {
+      const formData = data[0] ?? this.defaultFormData;
+      const categories = data[1] ?? [];
+      for (let item in this.defaultFormData) {
+        this.formData[item] = formData[0][item] ?? this.defaultFormData[item];
+      }
+      for (let category of categories) {
+        for (let subCategory of category.subcategories) {
+          this.formData.categories.push({value: subCategory.id, text: `${category.title} > ${subCategory.title}`});
+        }
+      }
+      this.renderFormData();
+    });
   }
 
-  printCategories() {
-    let result = `<div class="form-group form-group__half_left">
-<label class="form-label">Категория</label>
-<select class="form-control" name="category" data-elem="subcategory">`;
+  loadProduct(id) {
+    const url = new URL(`products?id=${id}`, URL_BACKEND);
+    return fetchJson(url, {});
+  }
+
+  loadCategories() {
+    const url = new URL('categories?_sort=weight&_refs=subcategory', URL_BACKEND);
+    return fetchJson(url, {});
+  }
+
+  renderFormData() {
+    const formElements = this.subElements.productForm.elements ?? [];
+    let options = '';
     for (let category of this.formData.categories) {
-      result += `<option value="${category.value}">${category.text}</option>`;
+      options += `<option value="${category.value}">${category.text}</option>`;
     }
-    result += '</select></div>';
-    return result;
+    formElements['category'].innerHTML = options;
+    formElements['category'].value = this.formData['subcategory'];
+    for (let item in this.defaultFormData) {
+      if (['images', 'categories', 'subcategory'].includes(item)) {
+        continue;
+      }
+      formElements[item].value = this.formData[item];
+    }
+
+    this.subElements.imageListContainer.innerHTML = this.renderPhoto();
   }
 
-  printPhoto() {
-    let result = `<label class="form-label">Фото</label>
-        <div data-elem="imageListContainer">
-          <ul class="sortable-list">`;
+  renderPhoto() {
+    let images = '<ul class="sortable-list">';
     let index = 0;
     for (let image of this.formData.images) {
-      result += `<li class="products-edit__imagelist-item sortable-list__item" style="">
+      images += `<li class="products-edit__imagelist-item sortable-list__item" style="">
               <input type="hidden" name="url" value="${image.url}">
-              <input type="hidden" name="source" value="${image.name}">
+              <input type="hidden" name="source" value="${image.source}">
               <span>
                 <img src="icon-grab.svg" data-grab-handle="" alt="grab">
                 <img class="sortable-table__cell-img" alt="Image" src="${image.url}">
-                <span>${image.name}</span>
+                <span>${image.source}</span>
               </span>
               <button type="button">
                 <img src="icon-trash.svg" data-delete-handle="${index}" alt="delete">
@@ -114,23 +143,8 @@ export default class ProductFormComponent {
             </li>`;
       index++;
     }
-    result += `</ul>
-        </div>
-        <input type="file" data-elem="file" style="display: none;">
-        <button type="button" name="uploadImage" data-elem="uploadImageButton" class="button-primary-outline"><span>Загрузить</span></button>`;
-    return result;
-  }
-
-  printStatus() {
-    const status = + this.formData.status;
-    const check = (value) => value === status ? 'selected' : '';
-    return `<div class="form-group form-group__part-half">
-        <label class="form-label">Статус</label>
-        <select class="form-control" data-elem="status" name="status">
-          <option value="1" ${check(1)}>Активен</option>
-          <option value="0" ${check(0)}>Неактивен</option>
-        </select>
-      </div>`;
+    images += '</ul>';
+    return images;
   }
 
   get template() {
@@ -139,32 +153,45 @@ export default class ProductFormComponent {
       <div class="form-group form-group__half_left">
         <fieldset>
           <label class="form-label">Название товара</label>
-          <input required="" type="text" data-elem="title" name="title" value="${this.formData.title}" class="form-control" placeholder="Название товара">
+          <input required="" type="text" data-elem="title" name="title" value="" class="form-control" placeholder="Название товара">
         </fieldset>
       </div>
       <div class="form-group form-group__wide">
         <label class="form-label">Описание</label>
-        <textarea required="" class="form-control" name="description" data-elem="description" placeholder="Описание товара">${this.formData.description}</textarea>
+        <textarea required="" class="form-control" name="description" data-elem="description" placeholder="Описание товара"></textarea>
       </div>
       <div class="form-group form-group__wide" data-elem="sortable-list-container">
-      ${this.printPhoto()}
+        <label class="form-label">Фото</label>
+        <div data-elem="imageListContainer"></div>
+        <input type="file" data-elem="file" style="display: none;">
+        <button type="button" name="uploadImage" data-elem="uploadImageButton" class="button-primary-outline"><span>Загрузить</span></button>
       </div>
-      ${this.printCategories()}
+      <div class="form-group form-group__half_left">
+        <label class="form-label">Категория</label>
+        <select class="form-control" name="category" data-elem="subcategory">
+        </select>
+      </div>
       <div class="form-group form-group__half_left form-group__two-col">
         <fieldset>
           <label class="form-label">Цена ($)</label>
-          <input required="" type="number" data-elem="price" name="price" value="${this.formData.price}" class="form-control" placeholder="100">
+          <input required="" type="number" data-elem="price" name="price" value="" class="form-control" placeholder="100">
         </fieldset>
         <fieldset>
           <label class="form-label">Скидка ($)</label>
-          <input required="" type="number" data-elem="discount" name="discount" value="${this.formData.discount}" class="form-control" placeholder="0">
+          <input required="" type="number" data-elem="discount" name="discount" value="" class="form-control" placeholder="0">
         </fieldset>
       </div>
       <div class="form-group form-group__part-half">
         <label class="form-label">Количество</label>
-        <input required="" type="number" data-elem="quantity" class="form-control" value="${this.formData.quantity}" name="quantity" placeholder="1">
+        <input required="" type="number" data-elem="quantity" class="form-control" value="" name="quantity" placeholder="1">
       </div>
-      ${this.printStatus()}
+      <div class="form-group form-group__part-half">
+        <label class="form-label">Статус</label>
+        <select class="form-control" data-elem="status" name="status">
+          <option value="1">Активен</option>
+          <option value="0">Неактивен</option>
+        </select>
+      </div>
       <div class="form-buttons">
         <button type="submit" name="save" data-elem="saveButton" class="button-primary-outline">
           Сохранить товар
@@ -178,7 +205,6 @@ export default class ProductFormComponent {
     const element = document.createElement('div');
 
     element.innerHTML = this.template;
-
     this.element = element.firstElementChild;
     this.subElements = this.getSubElements(element);
 
@@ -186,7 +212,7 @@ export default class ProductFormComponent {
   }
 
   renderImages() {
-    this.subElements['sortable-list-container'].innerHTML = this.printPhoto();
+    this.subElements['sortable-list-container'].innerHTML = this.renderPhoto();
   }
 
   getSubElements(element) {
