@@ -3,8 +3,6 @@ import ImageUploader from '../../image-uploader/index.js';
 import fetchJson from "../../utils/fetch-json.js";
 
 const URL_BACKEND = 'https://course-js.javascript.ru/api/rest/';
-const BACKEND_URL = 'https://course-js.javascript.ru/api/rest/products';
-const BACKEND_CATEGORY_URL = 'https://course-js.javascript.ru/api/rest/categories?_sort=weight&_refs=subcategory';
 
 export default class ProductFormComponent {
   element;
@@ -20,63 +18,6 @@ export default class ProductFormComponent {
     images: [],
     categories: []
   };
-
-  onSubmit = async (event) => {
-    this.setValues();
-    //this.dispatchEvent();
-    // отправка данных формы
-    const data = await this.send();
-    console.log(data);
-  };
-
-  send () {
-    return fetchJson(this.url, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      'body': this.formData
-    });
-  }
-
-  async upload() {
-    let uploader = new ImageUploader();
-    const file = this.subElements.file.files[0];
-    const fileName = file.name ?? '';
-
-    let result;
-
-    try {
-      result = await uploader.upload(file);
-      console.log('Изображение загружено');
-    } catch(err) {
-      alert('Ошибка загрузки изображения');
-      console.error(err);
-    } finally {
-      console.log('Готово');
-    }
-
-    const success = result.success ?? false;
-    if (success) {
-      this.formData.images.push({
-        url: result.data.link,
-        name: fileName
-      });
-
-      this.renderImages();
-    }
-  }
-
-  uploadImage = () => {
-    this.subElements.file.click();
-    this.subElements.file.onchange = this.upload.bind(this);
-  };
-
-  deleteImage = (event) => {
-    const deleteButton = event.target;
-    this.formData.images.splice(deleteButton.dataset.deleteHandle, 1);
-    this.renderImages();
-  }
 
   constructor(id) {
     this.formData = this.defaultFormData;
@@ -95,6 +36,14 @@ export default class ProductFormComponent {
       }
       this.renderFormData();
     });
+  }
+
+  render() {
+    const element = document.createElement('div');
+
+    element.innerHTML = this.template;
+    this.element = element.firstElementChild;
+    this.subElements = this.getSubElements(element);
   }
 
   loadProduct(id) {
@@ -123,6 +72,8 @@ export default class ProductFormComponent {
     }
 
     this.subElements.imageListContainer.innerHTML = this.renderPhoto();
+
+    this.initEventListeners();
   }
 
   renderPhoto() {
@@ -201,18 +152,8 @@ export default class ProductFormComponent {
   </div>`;
   }
 
-  render() {
-    const element = document.createElement('div');
-
-    element.innerHTML = this.template;
-    this.element = element.firstElementChild;
-    this.subElements = this.getSubElements(element);
-
-    this.initEventListeners();
-  }
-
   renderImages() {
-    this.subElements['sortable-list-container'].innerHTML = this.renderPhoto();
+    this.subElements['imageListContainer'].innerHTML = this.renderPhoto();
   }
 
   getSubElements(element) {
@@ -251,21 +192,80 @@ export default class ProductFormComponent {
   }
 
   initEventListeners() {
-    this.subElements.uploadImageButton.addEventListener('click', this.uploadImage);
+    this.subElements.uploadImageButton.addEventListener('click', this.onUploadImage);
     this.subElements.saveButton.addEventListener('click', this.onSubmit);
-    const buttons = this.element.querySelectorAll('[data-delete-handle]');
+    const buttons = this.subElements.imageListContainer.querySelectorAll('[data-delete-handle]');
     for (let button of buttons) {
-      button.addEventListener('click', this.deleteImage);
+      button.addEventListener('click', this.onDeleteImageClick);
     }
   }
 
   removeEventListeners() {
-    this.subElements.uploadImageButton.removeEventListener('click', this.uploadImage);
+    this.subElements.uploadImageButton.removeEventListener('click', this.onUploadImage);
     this.subElements.saveButton.removeEventListener('click', this.onSubmit);
-    const buttons = this.element.querySelectorAll('[data-delete-handle]');
+    const buttons = this.subElements.imageListContainer.querySelectorAll('[data-delete-handle]');
     for (let button of buttons) {
-      button.removeEventListener('click', this.deleteImage);
+      button.removeEventListener('click', this.onDeleteImageClick);
     }
+  }
+
+  onSubmit = async () => {
+    this.setValues();
+    //this.dispatchEvent();
+    // отправка данных формы
+    const data = await this.send();
+    // тут вернется ошибка: Access to fetch at 'https://course-js.javascript.ru/api/rest/products' from origin 'http://localhost:63342' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+  };
+
+  send () {
+    const url = new URL('products', URL_BACKEND);
+    return fetchJson(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      'body': this.formData
+    });
+  }
+
+  onUploadImage = () => {
+    this.subElements.file.click();
+    this.subElements.file.onchange = this.upload;
+  };
+
+  upload = async () => {
+    let uploader = new ImageUploader();
+    const file = this.subElements.file.files[0];
+    const fileName = file.name ?? '';
+
+    let result;
+
+    try {
+      result = await uploader.upload(file);
+      const success = result.success ?? false;
+      if (success) {
+        this.formData.images.push({
+          url: result.data.link,
+          source: fileName
+        });
+
+        this.renderImages();
+      }
+      console.log('Изображение загружено');
+    } catch(err) {
+      alert('Ошибка загрузки изображения');
+      console.error(err);
+    } finally {
+      this.subElements.file.onchange = '';
+      console.log('Готово');
+    }
+  }
+
+  onDeleteImageClick = (event) => {
+    const deleteButton = event.target;
+    this.formData.images.splice(deleteButton.dataset.deleteHandle, 1);
+    deleteButton.closest('li').remove();
+    //this.renderImages();
   }
 
   destroy() {
