@@ -53,7 +53,7 @@ export default class SortableList {
       return;
     }
     const copy = this.placeholderElement.cloneNode(true);
-    moveElement.before(copy);
+    this.calculatePosition(moveElement, event.clientX, event.clientY, copy);
     this.placeholderElement.remove();
     this.placeholderElement = copy;
   };
@@ -63,15 +63,32 @@ export default class SortableList {
     document.removeEventListener('pointermove', this.onPointerMove);
 
     let endElement = document.elementFromPoint(event.clientX, event.clientY);
-    endElement = endElement.closest('li.sortable-list__item');
+    endElement = endElement.closest('li.sortable-list__placeholder');
     this.draggableElement.draggable = false;
+    this.draggableElement.classList.remove('sortable-list__item_dragging');
     if (endElement !== null) { // нашли подходящий элемент для вставки
-      this.draggableElement.classList.remove('sortable-list__item_dragging');
       const copy = this.draggableElement.cloneNode(true);
-      endElement.before(copy);
+      this.calculatePosition(endElement, event.clientX, event.clientY, copy);
       this.draggableElement.remove();
     }
     this.draggableElement = null;
     this.placeholderElement.remove();
   };
+
+  /**
+   * Вычисляет позицию вставки перемещаемого элемента - выше или ниже элемента element
+   * и делает вставку
+   * @param element
+   * @param x
+   * @param y
+   * @param copy
+   */
+  calculatePosition(element, x, y, copy) {
+    const elementInfo = element.getBoundingClientRect();
+    if ((y - elementInfo.top) > elementInfo.height / 2) { // вставить ниже
+      element.after(copy);
+    } else { // вставить выше
+      element.before(copy);
+    }
+  }
 }
