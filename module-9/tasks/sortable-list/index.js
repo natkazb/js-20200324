@@ -22,10 +22,6 @@ export default class SortableList {
 
     this.element = element;
 
-    const placeholderElement = document.createElement('li');
-    placeholderElement.classList.add(...['sortable-list__item', 'sortable-list__placeholder']);
-    this.placeholderElement = placeholderElement;
-
     this.initEventListeners();
   }
 
@@ -41,14 +37,19 @@ export default class SortableList {
     draggableElement.draggable = true;
     draggableElement.classList.add('sortable-list__item_dragging');
     this.draggableElement = draggableElement;
-    document.addEventListener('pointermove', this.onPointerMove);
+
+    const placeholderElement = document.createElement('li');
+    placeholderElement.classList.add(...['sortable-list__item', 'sortable-list__placeholder']);
+    this.placeholderElement = placeholderElement;
+
+    document.addEventListener('drag', this.onDrag, true);
     document.addEventListener('dragend', this.onDragEnd);
   };
 
-  onPointerMove = (event) => {
+  onDrag = (event) => {
     let moveElement = document.elementFromPoint(event.clientX, event.clientY);
     moveElement = moveElement.closest('li.sortable-list__item');
-    if (!moveElement) { // не нашли подходящий элемент для перемещения
+    if (moveElement === null) { // не нашли подходящий элемент для перемещения
       return;
     }
     const copy = this.placeholderElement.cloneNode(true);
@@ -58,18 +59,19 @@ export default class SortableList {
   };
 
   onDragEnd = (event) => {
-    let endElement = document.elementFromPoint(event.clientX, event.clientY);
-    endElement = endElement.closest('li.sortable-list__item');
-    if (!endElement) { // не нашли подходящий элемент для вставки
-      return;
-    }
     document.removeEventListener('dragend', this.onDragEnd);
     document.removeEventListener('pointermove', this.onPointerMove);
+
+    let endElement = document.elementFromPoint(event.clientX, event.clientY);
+    endElement = endElement.closest('li.sortable-list__item');
     this.draggableElement.draggable = false;
-    this.draggableElement.classList.remove('sortable-list__item_dragging');
-    const copy = this.draggableElement.cloneNode(true);
-    endElement.before(copy);
-    this.draggableElement.remove();
+    if (endElement !== null) { // нашли подходящий элемент для вставки
+      this.draggableElement.classList.remove('sortable-list__item_dragging');
+      const copy = this.draggableElement.cloneNode(true);
+      endElement.before(copy);
+      this.draggableElement.remove();
+    }
     this.draggableElement = null;
+    this.placeholderElement.remove();
   };
 }
