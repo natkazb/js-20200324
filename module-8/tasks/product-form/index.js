@@ -265,7 +265,6 @@ export default class ProductFormComponent {
     const deleteButton = event.target;
     this.formData.images.splice(deleteButton.dataset.deleteHandle, 1);
     deleteButton.closest('li').remove();
-    //this.renderImages();
   }
 
   destroy() {
